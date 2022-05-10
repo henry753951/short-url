@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Home</title>
+    <script src="https://unpkg.com/vue@3"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+</head>
+<style>
+    *,
+    html {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .disclaimer {
+        display: none;
+    }
+</style>
+
+<body>
+    <div id="app">
+        <div class="container fixed-bottom pt-3" v-show="alert.show">
+            <div class="alert alert-primary d-flex align-items-center alert-dismissible">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-exclamation-triangle-fill flex-shrink-0 me-2" viewBox="0 0 16 16" role="img" aria-label="Warning:">
+                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+                </svg>
+                <div>
+                    {{alert.text}}
+                </div>
+                <button type="button" class="btn-close" @click="alert.show=false"></button>
+            </div>
+        </div>
+        <div class="bg-light">
+            <div class="container py-3">
+                <p class="mx-3 mb-0 fs-3 pt-3">Short your link</p>
+                <div class="d-flex flex-column justify-content-center m-3" v-if="generated==false">
+                    <div class="w-100">
+                        <div class="d-flex gap-2 my-1">
+                            <div class="input-group d-flex flex-column">
+                                <label class="form-label">Name : </label>
+                                <input v-model="form.name" type="text" class="form-control w-100">
+                            </div>
+                            <div class="input-group d-flex flex-column">
+                                <label class="form-label">Code : </label>
+                                <input v-model="form.shortCode" type="text" class="form-control w-100">
+                            </div>
+                        </div>
+                        <div class="input-group d-flex flex-column">
+                            <label class="form-label">Redirect to : </label>
+                            <input v-model="form.to" type="text" class="form-control w-100" placeholder="https://www.google.com/">
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary w-100 my-3" @click="newUrl">Next</button>
+                </div>
+                <div class="d-flex flex-column justify-content-center" v-else>
+                    <div class="m-3">
+                        <p>To : </p>
+                        <p class="text-center bg-white p-2"><a :href="'//'+form.to">{{form.to}}</a></p>
+                        <p>Form : </p>
+                        <p class="text-center bg-white p-2"><a :href="'https://linklyto.000webhostapp.com/s/'+form.shortCode">https://linklyto.000webhostapp.com/s/{{form.shortCode}}</a></p>
+                    </div>
+                    <button type="button" @click="copy('https://linklyto.000webhostapp.com/s/'+form.shortCode)" class="my-1 btn btn-info w-auto m-3">Copy</button>
+                    <button type="button" @click="generated=false;" class="my-1 btn btn-secondary w-auto m-3">Back</button>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="container py-3">
+                <p class="mx-3 fs-3">Last generated redirects list</p>
+                <div class="list">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item" v-for="item in list">
+                            <div class="d-flex">
+                                <p class="my-auto me-auto">{{item.name}}</p>
+                                <a :href="'/panel/'+item.id" class="btn btn-secondary me-2 btn-lg align-self-center">Panel</a>
+                                <div style="width:150px">
+                                    <a class="btn btn-light w-100 mb-2" @click="copy('https://linklyto.000webhostapp.com/s/'+item.ShortCode)">/s/{{item.ShortCode}}</a>
+                                    <a class="btn btn-primary w-100" :href="item.toUrl">To redirect!</a>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var app = Vue.createApp({
+            data() {
+                return {
+                    generated: false,
+                    form: {
+                        name: "",
+                        to: "",
+                        shortCode: ""
+                    },
+                    alert: {
+                        show: false,
+                        text: "Url has copied."
+                    },
+                    list: []
+                };
+            },
+            methods: {
+                async copy(s) {
+                    await navigator.clipboard.writeText(s);
+                    alert('Copied!');
+                },
+                newUrl: function() {
+                    var data = {
+                        name: this.form.name,
+                        toUrl: this.form.to,
+                        ShortCode: this.form.shortCode,
+                    }
+                    fetch('/api/create.php', {
+                            method: 'POST',
+                            body: JSON.stringify(data),
+                        })
+                        .then(response => response.json())
+                        .then(json => {
+                            this.generated = true
+                            this.getUrlList();
+                            console.log(json)
+                        });
+                },
+                getUrlList: function() {
+                    fetch('/api/getList.php')
+                        .then(response => response.json())
+                        .then(json => this.list = json.list);
+                }
+            },
+            mounted() {
+                this.getUrlList();
+            }
+        }).mount("#app");
+    </script>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ" crossorigin="anonymous"></script>
+
+</html>
